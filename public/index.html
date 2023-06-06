@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Asistente</title>
+  <style>
+    .chat-container {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .message {
+      margin-bottom: 10px;
+    }
+    .user-message {
+      color: blue;
+    }
+    .bot-message {
+      color: green;
+    }
+    .system-message {
+      color: gray;
+    }
+    .input-container {
+      display: flex;
+      margin-top: 10px;
+    }
+    .input-container input {
+      flex-grow: 1;
+      margin-right: 10px;
+    }
+    .input-container button {
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="message system-message"></div>
+    
+    <div id="chat-log"></div>
+    
+    <div class="input-container">
+      <input type="text" id="user-input" placeholder="Escribe un mensaje...">
+      <button id="send-btn" disabled>Enviar</button>
+    </div>
+  </div>
+  
+  <script>
+    const chatLog = document.getElementById('chat-log');
+    const userInput = document.getElementById('user-input');
+    const speechToTextBtn = document.getElementById('speech-to-text-btn');
+    const textToSpeechBtn = document.getElementById('text-to-speech-btn');
+    const sendBtn = document.getElementById('send-btn');
+    
+    // Agregar un mensaje al registro de chat
+    function addMessage(message, sender) {
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${sender}-message`;
+      messageEl.textContent = message;
+      chatLog.appendChild(messageEl);
+    }
+
+const url = 'http://localhost:3000/chat';
+
+
+async function sendMessage(msg) {
+  let data = { prompt: msg}
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Error en la solicitud');
+    }
+    
+    const responseData = await response.json();
+    console.log(responseData)
+    // Manipula la respuesta recibida del servidor
+    readText(responseData.response)
+  } catch (error) {
+    // Maneja el error en caso de que ocurra
+    console.error('Error:', error);
+  }
+}
+
+    
+    // Evento al hacer clic en el botón "Enviar"
+    sendBtn.addEventListener('click', async function() {
+      const message = userInput.value;
+      if (message !== '') {
+        await sendMessage(message);
+        userInput.value = '';
+        sendBtn.disabled = true;
+      }
+    });
+    
+    // Verificar si el navegador es compatible con la API de reconocimiento de voz
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      
+      // Configuración del reconocimiento de voz
+      recognition.lang = 'es-ES'; // Establece el idioma a español (puedes cambiarlo según tus necesidades)
+      recognition.continuous = true; // Permite el reconocimiento continuo
+      recognition.interimResults = true; // Habilita los resultados intermedios
+      
+      // Evento al recibir un resultado del reconocimiento de voz
+      recognition.onresult = function(event) {
+        const transcript = event.results[event.results.length - 1][0].transcript;
+        userInput.value = transcript;
+        if (event.results[event.results.length - 1].isFinal) {
+          sendBtn.disabled = false;
+}
+}
+
+  // Evento al comenzar el reconocimiento de voz
+  recognition.onstart = function() {
+    addMessage('Reconocimiento de voz', 'system');
+  }
+  
+  // Evento al detener el reconocimiento de voz
+  recognition.onend = function() {
+    addMessage('Reconocimiento de voz detenido.', 'system');
+  }
+  
+  recognition.start(); // Inicia el reconocimiento de voz automáticamente
+  
+  // Evento al hacer clic en el botón "Reconocimiento de voz"
+  speechToTextBtn.addEventListener('click', function() {
+    recognition.start();
+  });
+  
+} else {
+  // El navegador no es compatible con la API de reconocimiento de voz.
+  addMessage('El reconocimiento de voz no es compatible con tu navegador.', 'system');
+  speechToTextBtn.disabled = true;
+}
+
+// Evento al hacer clic en el botón "Texto a voz"
+textToSpeechBtn.addEventListener('click', function() {
+  const message = userInput.value;
+  if (message !== '') {
+    readText(message);
+  }
+});
+
+// Función para leer el texto en voz
+function readText(text) {
+  const speechSynthesis = window.speechSynthesis;
+  const utterance = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(utterance);
+}
+</script>
+</body>
+</html>
